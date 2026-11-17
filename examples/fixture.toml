@@ -1,0 +1,11 @@
+version = 1
+
+[server]
+command = "cargo"
+args = ["run", "--quiet", "--example", "mock_server"]
+timeout_ms = 30000
+
+[[cases]]
+id = "echo-basic"
+tool = "echo"
+arguments = { text = "hello" }

@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Compile all targets
+        run: cargo check --locked --all-targets
+      - name: Exercise regression workflow
+        shell: bash
+        run: |
+          cargo run --locked -- baseline --config examples/fixture.toml --output snapshots/baseline.json
+          cargo run --locked -- check --config examples/fixture.toml --baseline snapshots/baseline.json
+          set +e
+          MOCK_VARIANT=changed cargo run --locked -- check --config examples/fixture.toml --baseline snapshots/baseline.json > changed.txt
+          status=$?
+          set -e
+          test "$status" -eq 2
+          grep -q 'tool_changed' changed.txt
+          grep -q 'case_changed' changed.txt
