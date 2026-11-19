@@ -1,0 +1,44 @@
+{
+  "format_version": 2,
+  "provenance": {
+    "protocol_version": "2025-06-18",
+    "runner_version": "0.2.0",
+    "fixture_digest": "c484324a6c24823a50b6658f96c676b2d27720905e2e8c4da01e4458cfe34e4f",
+    "content_digest": "fba8286b6f6e0f769b668c0432edaf82a0440db80dbf36654492336e1cfe59ce"
+  },
+  "tools": [
+    {
+      "description": "Echoes text",
+      "inputSchema": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "name": "echo"
+    }
+  ],
+  "cases": [
+    {
+      "id": "echo-basic",
+      "tool": "echo",
+      "outcome": {
+        "status": "ok",
+        "value": {
+          "content": [
+            {
+              "text": "hello",
+              "type": "text"
+            }
+          ],
+          "isError": false
+        }
+      }
+    }
+  ]
+}

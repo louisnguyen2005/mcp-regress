@@ -1,3 +1,6 @@
 /target
 /snapshots
 /reports
+
+__pycache__/
+*.pyc

@@ -1,0 +1,13 @@
+version = 1
+
+# Require review when a tool's agent-visible description changes.
+[overrides]
+"tool.description" = "breaking"
+
+# Exceptions are optional, exact-name scoped, and expire at the end of the
+# specified UTC date. Choose a reviewed future date and a meaningful reason.
+# [[exceptions]]
+# rule = "case.changed"
+# name = "echo-basic"
+# reason = "Approved migration; tracked in issue 123"
+# expires = "YYYY-MM-DD"
