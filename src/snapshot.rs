@@ -196,7 +196,15 @@ async fn capture_inner(config: &Config) -> Result<Snapshot, String> {
             if !tool_names.contains(case.tool.as_str()) {
                 return Err("fixture refers to an unknown tool".into());
             }
-            let outcome = match client.call_tool(&case.tool, case.arguments.clone()).await {
+            let call = client.call_tool(&case.tool, case.arguments.clone());
+            let response = if let Some(limit) = case.timeout_ms {
+                tokio::time::timeout(Duration::from_millis(limit), call)
+                    .await
+                    .map_err(|_| "case deadline exceeded".to_string())?
+            } else {
+                call.await
+            };
+            let outcome = match response {
                 Ok(mut value) => {
                     if case.expected_rpc_error.is_some() {
                         return Err("expected RPC error was not returned".into());
@@ -211,6 +219,14 @@ async fn capture_inner(config: &Config) -> Result<Snapshot, String> {
                     }
                     if is_error != case.expect_tool_error {
                         return Err("tool error did not match case expectation".into());
+                    }
+                    for (pointer, expected) in &case.assertions {
+                        if value.pointer(pointer) != Some(expected) {
+                            // Neither actual values nor expectations belong in diagnostics.
+                            return Err(
+                                "result assertion failed (values omitted for privacy)".into()
+                            );
+                        }
                     }
                     for pointer in &case.ignore_pointers {
                         // Replace instead of remove: array indexes stay stable across exclusions.

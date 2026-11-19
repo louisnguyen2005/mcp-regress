@@ -4,7 +4,7 @@
 
 This repository is an early prototype. The [product roadmap](docs/ROADMAP.md), [delivery backlog](docs/BACKLOG.md), [security model](docs/SECURITY.md), and [compatibility ledger](docs/COMPATIBILITY.md) describe the work required before broader production use. The CLI is an MCP client; an agent-facing MCP server is planned as an optional adapter.
 
-## Development milestone: v0.3
+## Development milestone: v0.4
 
 The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, and conservative change classification. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
 
@@ -97,6 +97,24 @@ cargo run --release -- check \
 
 Review baseline updates as code changes. A passing comparison means the configured tool surface and fixture results did not change in the observed run; it is not a security certification or a sandbox.
 
+## Result assertions
+
+Cases can assert exact result fields before ignored values are normalized:
+
+```toml
+[[cases]]
+id = "echo-basic"
+tool = "echo"
+arguments = { text = "hello" }
+timeout_ms = 250
+
+[cases.assertions]
+"/content/0/text" = "hello"
+"/isError" = false
+```
+
+Missing paths, mismatches, and case timeouts abort capture without updating a baseline. Diagnostics omit the expected and actual values. See `examples/assertions.toml` for a runnable fixture.
+
 ## Policy and validation
 
 ```sh
@@ -113,6 +131,10 @@ python3 scripts/check.py
 ```
 
 CI compares the mock server with the reviewed `fixtures/baseline.json`. Regenerate that file only as an intentional baseline update and review its diff.
+
+## Enhancement planning
+
+The editable [enhancement tracker](outputs/mcp-regress-planning-20261119/mcp-regress-enhancement-tracker.xlsx) contains 24 proposed ideas and the current engineering backlog. Use filters and amber cells to assign priorities, owners, statuses and target releases. The engineering sheet is a snapshot; synchronize accepted work with `docs/BACKLOG.md` when implementation changes.
 
 ## License
 

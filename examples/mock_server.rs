@@ -27,7 +27,10 @@ fn main() {
         let Some(id) = request.get("id") else {
             continue;
         };
-        if variant == "hang" || variant == "tree_hang" {
+        if variant == "hang"
+            || variant == "tree_hang"
+            || (variant == "call_hang" && request["method"] == "tools/call")
+        {
             std::thread::sleep(std::time::Duration::from_secs(120));
         }
         if variant == "oversized" {

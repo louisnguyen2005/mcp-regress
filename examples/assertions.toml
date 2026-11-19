@@ -1,0 +1,16 @@
+version = 1
+
+[server]
+command = "cargo"
+args = ["run", "--quiet", "--example", "mock_server"]
+timeout_ms = 30000
+
+[[cases]]
+id = "echo-asserted"
+tool = "echo"
+arguments = { text = "hello" }
+timeout_ms = 5000
+
+[cases.assertions]
+"/content/0/text" = "hello"
+"/isError" = false

@@ -1,4 +1,4 @@
-# Local gate contract — v0.3
+# Local gate contract — v0.4
 
 ## Supported scope
 
@@ -51,3 +51,11 @@ Unix stdio servers start in a separate process group. Normal completion, request
 Each optional `[[exceptions]]` has `rule`, exact `name`, nonempty `reason`, and an `expires` string in YYYY-MM-DD format. Dates are validated, including leap years; expiry is inclusive through that UTC day. Expired policies fail with exit 1 even with `--fail-on none` or no matching findings. Unknown rules/fields and duplicate exception scopes are rejected. Exceptions remain in JSON/Markdown reports and suppress only matching policy findings. Execution failures cannot be waived. Policy loading is bounded to 1 MiB.
 
 Before execution, outputs are resolved and checked against config/policy/input snapshots and each other. Existing symlink aliases are rejected. This avoids accidental input destruction but assumes parent directories do not change concurrently. Multiple output files are individually atomic, not a single transaction.
+
+## Case assertions and deadlines (v0.4)
+
+A case can specify `timeout_ms = 250` to impose a shorter tool-call deadline. The effective deadline is the minimum of this limit, the server request timeout, and the remaining total-run budget. Zero is invalid. Deadline failures abort capture and never replace a baseline. This does not extend the server request timeout or retry a tool call.
+
+`[cases.assertions]` maps non-root RFC 6901 pointers to exact expected JSON values. Every path must exist and equal its expected value. Assertions run on the original tool result before ignore pointers and redaction; mismatches fail without printing actual or expected values. At most 1,000 assertions are allowed per case. Assertions cannot be combined with `expected_rpc_error`, since those cases have no tool result. They can be used with an explicitly expected tool-level error.
+
+See `examples/assertions.toml`. Default-empty assertions and absent case deadlines are omitted from fixture serialization, preserving existing v2 fixture digests. Adding or changing an assertion/deadline changes fixture provenance and requires an intentional baseline review.

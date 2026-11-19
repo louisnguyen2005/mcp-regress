@@ -46,6 +46,10 @@ pub struct Case {
     pub expected_rpc_error: Option<i64>,
     #[serde(default)]
     pub expect_tool_error: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub assertions: BTreeMap<String, Value>,
 }
 
 fn default_protocol() -> String {
@@ -121,6 +125,22 @@ impl Config {
             }
             if case.expect_tool_error && case.expected_rpc_error.is_some() {
                 return Err("case cannot expect both RPC and tool errors".into());
+            }
+            if case.timeout_ms == Some(0) {
+                return Err("case timeout_ms must be greater than zero".into());
+            }
+            if case.assertions.len() > 1000 {
+                return Err("case assertions exceed 1000".into());
+            }
+            if case.expected_rpc_error.is_some() && !case.assertions.is_empty() {
+                return Err("RPC error cases cannot assert result fields".into());
+            }
+            if case
+                .assertions
+                .keys()
+                .any(|pointer| !valid_pointer(pointer))
+            {
+                return Err("assertions require valid non-root JSON Pointers".into());
             }
             for pointer in &case.ignore_pointers {
                 if !valid_pointer(pointer) {

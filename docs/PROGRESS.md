@@ -46,3 +46,9 @@ Implemented versioned policy files, stable finding rule IDs and report v3, expli
 The shared automated command is `python3 scripts/check.py`: formatting, Clippy, 20 Rust tests, 19 real-process CLI tests, build, reviewed-baseline pass, and intentional-drift exit 2 all pass locally on Linux. Tests include policy expiry/leap dates, alias/symlink protection, canonical hash compatibility, notification floods, schema narrowing, and SIGINT process cleanup. CI runs the same command on three operating systems; remote job results must be checked after push.
 
 Hosted validation for `f805b69` passed on all three operating systems ([run](https://github.com/louisnguyen2005/mcp-regress/actions/runs/44485383205)). Deprecated action runtimes were then upgraded to official Node 24 releases and all action revisions pinned; checkout credentials are not retained. The final follow-up CI run validates these workflow-only updates.
+
+## v0.4 fixture checks
+
+FIX-02 adds exact JSON Pointer assertions evaluated before normalization/redaction and optional per-case tool deadlines. Five additional process tests verify success, mismatch privacy, missing paths, shorter deadlines, and invalid settings. Existing captures with no new settings retain their fixture digests. Future enhancement management is delivered in an editable XLSX tracker under `outputs/mcp-regress-planning-20261119/`; engineering status remains authoritative in the Markdown backlog and tracker edits are not automatically synchronized.
+
+Local v0.4 validation passes formatting, Clippy, 20 Rust tests, 24 real-process tests and the unchanged clean/drift baseline gates. The tracker contains 24 proposals and 30 engineering records, with recalculated counts, dropdowns, filters and frozen headers verified after export.

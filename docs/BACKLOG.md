@@ -17,6 +17,7 @@ Update this file when work starts or a gate is completed. IDs are stable; split 
 | CORE-06 | 1 / P0 | Prove deterministic ordering and normalization rules | CORE-03 | Repeated capture passes on Linux/macOS/Windows: [CI evidence](COMPATIBILITY.md#hosted-ci-evidence) | done |
 | CI-01 | 1 / P0 | Stop generating the baseline inside the same CI check that compares against it | SPEC-01 | Checked-in `fixtures/baseline.json`, clean/drift checks in CI | done |
 | FIX-01 | 1 / P1 | Add case setup/teardown, expected errors, run budgets and safe side-effect opt-in | CORE-04, SEC-01 | Expected errors/run budgets implemented; setup/teardown and side-effect policy remain | in_progress |
+| FIX-02 | 1 / P1 | Assert exact result fields before normalization and enforce per-case deadlines | CORE-04 | `tests/e2e.py`: success, mismatch, missing path, timeout and privacy cases | done |
 | DATA-01 | 2 / P0 | Version and migrate snapshot/report schemas; record provenance and integrity | SPEC-01, CORE-06 | V2 checksum/fixture provenance; v1 reads; binary/signature/migration work remains | in_progress |
 | DATA-02 | 2 / P0 | Redact secrets before persistence and report emission | SEC-01, DATA-01 | Recursive key redaction/private files; free-text scanning remains | in_progress |
 | DIFF-01 | 2 / P0 | Implement conservative JSON Schema compatibility rules | DATA-01, DISC-02 | Conservative object-schema proof and inconclusive fallback; full engine remains | in_progress |

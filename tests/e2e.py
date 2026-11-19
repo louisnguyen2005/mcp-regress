@@ -67,6 +67,32 @@ class CliTests(unittest.TestCase):
         changes=json.loads(report.read_text())['changes']
         self.assertTrue(any(c.get('exception',{}).get('reason')=='approved migration' for c in changes))
 
+    def test_assertions_match_original_result(self):
+        self.configure(case_extra='ignore_pointers=["/content/0/text"]\n[cases.assertions]\n"/content/0/text"="hello"\n"/isError"=false')
+        self.record()
+        self.assertIn('[IGNORED]',self.baseline.read_text())
+
+    def test_assertion_failures_do_not_expose_values_or_replace_baselines(self):
+        self.record(); original=self.baseline.read_bytes()
+        self.configure(case_extra='ignore_pointers=["/content/0/text"]\n[cases.assertions]\n"/content/0/text"="CANARY_SECRET"')
+        self.assertIn('assertion failed',self.record(expected=1).stderr)
+        self.assertEqual(original,self.baseline.read_bytes())
+
+    def test_missing_assertion_path_fails(self):
+        self.configure(case_extra='[cases.assertions]\n"/missing"="expected"')
+        self.record(expected=1)
+        self.assertFalse(self.baseline.exists())
+
+    def test_per_case_deadline(self):
+        self.configure('call_hang',case_extra='timeout_ms=25')
+        self.assertIn('case deadline',self.record(expected=1).stderr)
+        self.assertFalse(self.baseline.exists())
+
+    def test_invalid_case_settings_fail_validation(self):
+        for extra in ['timeout_ms=0','[cases.assertions]\n"/bad~2"="x"','expected_rpc_error=-1\n[cases.assertions]\n"/x"="x"']:
+            self.configure(case_extra=extra)
+            self.run_cli('validate','--config',self.config,expected=1)
+
     def test_clean_and_changed_gate(self):
         self.record()
         self.run_cli('check','--config',self.config,'--baseline',self.baseline)
