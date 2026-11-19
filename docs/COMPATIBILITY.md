@@ -38,3 +38,7 @@ Reviewer:
 ## Local evidence, 2026-11-19
 
 v0.2 Linux development run: 2025-06-18 mock server initialize/list/call, pagination/error validation, repeatable snapshots, CLI exit codes, redaction, frame/run limits, Unix process-group cleanup, and baseline integrity are covered by `tests/core.rs` and `tests/e2e.py`. CI now schedules Linux/macOS/Windows jobs. Those remote jobs have not been observed in this session. No agent application interoperability run has been performed.
+
+## Hosted CI evidence
+
+Commit `f805b69` passed the shared validation job on Linux, macOS, and Windows: https://github.com/louisnguyen2005/mcp-regress/actions/runs/44485383205. Each runner checks formatting/lint, Rust tests, process E2E tests, deterministic captures and the reviewed baseline. Linux-specific `/proc` descendant/SIGINT tests are skipped on macOS/Windows. This establishes the local mock workflow on those runners; it is not independent-server or agent interoperability evidence.

@@ -14,7 +14,7 @@ Update this file when work starts or a gate is completed. IDs are stable; split 
 | CORE-03 | 1 / P0 | Validate JSON-RPC envelope, IDs, protocol lifecycle and negotiated version | SPEC-02, CORE-01 | Local 2025 profile validation tested; independent conformance outstanding | in_progress |
 | CORE-04 | 1 / P0 | Separate RPC/tool errors from transport, timeout and process failures | CORE-03 | `tests/core.rs` and `tests/e2e.py`: unexpected errors abort capture | done |
 | CORE-05 | 1 / P0 | Terminate child process trees; handle cancellation and stderr safely | CORE-01, SEC-01 | Linux group timeout tested; Windows descendants still outstanding | in_progress |
-| CORE-06 | 1 / P0 | Prove deterministic ordering and normalization rules | CORE-03 | Repeated local capture is byte-identical; cross-OS matrix configured | in_progress |
+| CORE-06 | 1 / P0 | Prove deterministic ordering and normalization rules | CORE-03 | Repeated capture passes on Linux/macOS/Windows: [CI evidence](COMPATIBILITY.md#hosted-ci-evidence) | done |
 | CI-01 | 1 / P0 | Stop generating the baseline inside the same CI check that compares against it | SPEC-01 | Checked-in `fixtures/baseline.json`, clean/drift checks in CI | done |
 | FIX-01 | 1 / P1 | Add case setup/teardown, expected errors, run budgets and safe side-effect opt-in | CORE-04, SEC-01 | Expected errors/run budgets implemented; setup/teardown and side-effect policy remain | in_progress |
 | DATA-01 | 2 / P0 | Version and migrate snapshot/report schemas; record provenance and integrity | SPEC-01, CORE-06 | V2 checksum/fixture provenance; v1 reads; binary/signature/migration work remains | in_progress |
