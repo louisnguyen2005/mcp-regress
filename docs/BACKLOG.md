@@ -8,8 +8,9 @@ Update this file when work starts or a gate is completed. IDs are stable; split 
 | DISC-02 | 0 / P0 | Collect 3 consented representative fixture projects and failure cases | DISC-01 | Reproducible, sanitized corpus with expected outcomes | todo |
 | SPEC-01 | 0 / P0 | Specify CLI/config/snapshot/report v1, errors and exit codes | — | [Contract](CONTRACT.md) and [ADR](decisions/0001-local-gate-v02.md) | done |
 | SPEC-02 | 0 / P0 | Choose protocol compatibility profiles and test matrix | DISC-02 | ADR with independent server evidence | todo |
-| SEC-01 | 0 / P0 | Complete threat model and default data policy | — | Reviewed [SECURITY.md](SECURITY.md) with owners for open risks | todo |
+| SEC-01 | 0 / P0 | Complete threat model and default data policy | — | [Reviewed SECURITY.md risk register and owner roles](SECURITY.md#open-risk-register-and-owners); individual incident-response contacts remain a release gate | done |
 | CORE-01 | 1 / P0 | Extract library and transport interface without changing CLI behavior | SPEC-01 | `src/lib.rs`, generic `Transport`, CLI/E2E equivalence | done |
+| SEC-02 | 1 / P0 | Support an opt-in clean child environment with explicit variables and absolute executable | SEC-01 | [E2E coverage](../tests/e2e.py) verifies parent canary removal, explicit values, legacy inheritance and relative-command rejection; [ADR](decisions/0004-clean-child-environment.md) | done |
 | CORE-02 | 1 / P0 | Bound line/frame size before allocation, page count, duration and total run resource use | CORE-01, SEC-01 | Frame/output/run/tool limits implemented; child resource isolation remains | in_progress |
 | CORE-03 | 1 / P0 | Validate JSON-RPC envelope, IDs, protocol lifecycle and negotiated version | SPEC-02, CORE-01 | Local 2025 profile validation tested; independent conformance outstanding | in_progress |
 | CORE-04 | 1 / P0 | Separate RPC/tool errors from transport, timeout and process failures | CORE-03 | `tests/core.rs` and `tests/e2e.py`: unexpected errors abort capture | done |

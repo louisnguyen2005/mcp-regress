@@ -22,19 +22,24 @@ class CliTests(unittest.TestCase):
         self.baseline = self.root / 'baseline.json'
         self.configure()
 
-    def configure(self, variant='', extra='', case_extra=''):
-        self.config.write_text('version=1\n[server]\ncommand=' + json.dumps(str(SERVER)) +
-            '\ntimeout_ms=500\nrun_timeout_ms=2000\n' + extra + '\n[server.env]\nMOCK_VARIANT=' + json.dumps(variant) +
-            '\n[[cases]]\nid="echo"\ntool="echo"\narguments={text="hello"}\n' + case_extra)
+    def configure(self, variant='', extra='', case_extra='', server_extra='', command=None, server_env=None, case_text='hello'):
+        env = {'MOCK_VARIANT': variant, **(server_env or {})}
+        env_lines = '\n'.join(f'{json.dumps(key)}={json.dumps(value)}' for key, value in env.items())
+        self.config.write_text('version=1\n[server]\ncommand=' + json.dumps(str(command or SERVER)) +
+            '\ntimeout_ms=500\nrun_timeout_ms=2000\n' + extra + '\n' + server_extra +
+            '\n[server.env]\n' + env_lines +
+            '\n[[cases]]\nid="echo"\ntool="echo"\narguments={text=' + json.dumps(case_text) + '}\n' + case_extra)
 
-    def run_cli(self, *args, expected=0):
-        process = subprocess.run([str(CLI), *map(str,args)], cwd=ROOT, capture_output=True, text=True, timeout=10)
+    def run_cli(self, *args, expected=0, extra_env=None):
+        child_env=os.environ.copy()
+        if extra_env: child_env.update(extra_env)
+        process = subprocess.run([str(CLI), *map(str,args)], cwd=ROOT, env=child_env, capture_output=True, text=True, timeout=10)
         self.assertEqual(process.returncode, expected, process.stdout + process.stderr)
         self.assertNotIn('CANARY_SECRET', process.stdout + process.stderr)
         return process
 
-    def record(self, expected=0):
-        return self.run_cli('baseline','--config',self.config,'--output',self.baseline,expected=expected)
+    def record(self, expected=0, extra_env=None):
+        return self.run_cli('baseline','--config',self.config,'--output',self.baseline,expected=expected,extra_env=extra_env)
 
     def test_validate_never_launches_server(self):
         self.configure('hang')
@@ -92,6 +97,27 @@ class CliTests(unittest.TestCase):
         for extra in ['timeout_ms=0','[cases.assertions]\n"/bad~2"="x"','expected_rpc_error=-1\n[cases.assertions]\n"/x"="x"']:
             self.configure(case_extra=extra)
             self.run_cli('validate','--config',self.config,expected=1)
+
+    def test_minimal_server_environment_drops_parent_secrets(self):
+        self.configure(server_extra='env_clear=true', case_text='env-check', case_extra='''[cases.assertions]
+"/content/0/text"="isolated"''')
+        self.record(extra_env={"MCP_TEST_SECRET":"CANARY_SECRET"})
+        self.assertNotIn("CANARY_SECRET",self.baseline.read_text())
+
+    def test_minimal_environment_allows_explicit_values(self):
+        self.configure(server_extra='env_clear=true', server_env={"MCP_TEST_SECRET":"approved"}, case_text='env-check', case_extra='''[cases.assertions]
+"/content/0/text"="approved"''')
+        self.record(extra_env={"MCP_TEST_SECRET":"CANARY_SECRET"})
+        self.assertNotIn("CANARY_SECRET",self.baseline.read_text())
+
+    def test_default_environment_still_inherits(self):
+        self.configure(case_text='env-check', case_extra='''[cases.assertions]
+"/content/0/text"="legacy-value"''')
+        self.record(extra_env={"MCP_TEST_SECRET":"legacy-value"})
+
+    def test_minimal_environment_requires_absolute_command(self):
+        self.configure(server_extra='env_clear=true', command='mock_server')
+        self.assertIn("absolute path",self.run_cli("validate","--config",self.config,expected=1).stderr)
 
     def test_clean_and_changed_gate(self):
         self.record()

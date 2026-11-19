@@ -21,6 +21,8 @@ pub struct Server {
     pub args: Vec<String>,
     #[serde(default)]
     pub env: BTreeMap<String, String>,
+    #[serde(default)]
+    pub env_clear: bool,
     #[serde(default = "default_timeout")]
     pub timeout_ms: u64,
     #[serde(default = "default_run_timeout")]
@@ -96,6 +98,9 @@ impl Config {
         }
         if config.server.command.trim().is_empty() {
             return Err("server.command cannot be empty".into());
+        }
+        if config.server.env_clear && !Path::new(&config.server.command).is_absolute() {
+            return Err("server.command must be an absolute path when env_clear is enabled".into());
         }
         if config.server.timeout_ms == 0 {
             return Err("server.timeout_ms must be greater than zero".into());

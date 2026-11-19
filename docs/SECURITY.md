@@ -1,6 +1,6 @@
 # Security model and controls
 
-Updated 2026-11-19. This file is a design checklist for planned work and a statement of current limits. See [ROADMAP.md](ROADMAP.md) for sequencing.
+Reviewed 2026-11-19. This file is a design checklist for planned work and a statement of current limits. Open risks have a responsible owner role and backlog link below; individual incident-response contacts still need to be named before a public release. See [ROADMAP.md](ROADMAP.md) for sequencing.
 
 ## Trust boundaries
 
@@ -10,13 +10,36 @@ Updated 2026-11-19. This file is a design checklist for planned work and a state
 4. Snapshots and reports can contain sensitive tool responses, arguments, URLs, identifiers, and error strings. Current `ignore_pointers` replaces selected values from successful tool responses; it is not comprehensive redaction.
 5. Future HTTP support creates an additional URL, network, OAuth and redirect boundary. Future agent adapter support creates a model-to-local-command boundary.
 
-## Implemented controls in v0.3
+## Implemented controls in v0.5
 
 Bounded incremental frames and total stdout/run limits replace unbounded line reads. JSON-RPC envelopes, response IDs, initialization identity/tools/revision and pagination are validated. Unexpected RPC/tool errors and all transport failures abort capture. Files are atomically replaced with private Unix permissions and snapshot content checksums. CLI SIGINT triggers transport cleanup, and Unix child groups are killed. Server stderr and remote RPC message/data are suppressed. Common response secret keys are redacted; console/Markdown omit response payloads. CI uses a reviewed baseline. Output aliases to inputs are rejected before execution. Policy exceptions are exact-name scoped, retain finding evidence, and expire; expired exceptions cannot suppress checks. Parent directories must still be trusted against concurrent replacement.
 
+An opt-in `server.env_clear` mode launches with an empty child environment, then adds only explicit server values. It requires an absolute executable. The default remains inherited for compatibility. Environment clearing reduces accidental secret forwarding but is not process isolation.
+
+## Default data and execution policy
+
+- Treat the configured child command as trusted code because it runs with the runner's operating-system permissions. Prefer a disposable CI worker and fixture account. `server.env_clear = true` reduces inherited-variable exposure, but does not restrict files, network, credentials explicitly supplied, or child capabilities.
+- Use synthetic or disposable test data. Keep fixture arguments, snapshots, reports, and server output private when they may contain sensitive data. Do not put credentials in checked-in TOML. The current key-based redaction does not detect secrets embedded in free text.
+- Treat all server-controlled output as untrusted data. A passing check is evidence of observed contract consistency only; it does not prove that a server is safe or that an AI agent will use it correctly.
+- CI must compare with a reviewed immutable baseline. Baseline generation and promotion remain deliberate maintainer actions, separate from the check job.
+
+## Open risk register and owners
+
+Ownership below is assigned by role so the work is not ownerless. The repository maintainer is accountable for keeping the register current and for naming individuals when the project establishes a release and incident-response process. This is an internal threat-model review, not an independent security audit.
+
+| Risk | Owner role | Follow-up |
+| --- | --- | --- |
+| Configured server command can access runner files, network and OS privileges; no CPU/memory sandbox exists | Project maintainer | [CORE-02](BACKLOG.md#delivery-backlog), [SEC-02](BACKLOG.md#delivery-backlog) |
+| Windows child descendants and detached Unix descendants may outlive cancellation | Cross-platform runtime maintainer | [CORE-05](BACKLOG.md#delivery-backlog) |
+| Secrets in free text, schemas, arguments or private reports can escape key-based redaction | Artifact and reporting maintainer | [DATA-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) |
+| Implemented MCP profile lacks independent server/client conformance evidence and newer protocol behavior | Protocol compatibility maintainer | [SPEC-02](BACKLOG.md#delivery-backlog), [CORE-03](BACKLOG.md#delivery-backlog) |
+| Future remote transport could create SSRF, redirect, DNS rebinding and OAuth credential risks | Transport security maintainer | [HTTP-01](BACKLOG.md#delivery-backlog), [HTTP-02](BACKLOG.md#delivery-backlog) |
+| Future agent adapter could expose local commands or treat malicious server text as instructions | Agent integration maintainer | [AGENT-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) |
+| No published private vulnerability channel or named incident response contact | Project maintainer / security contact | [REL-02](BACKLOG.md#delivery-backlog); name contacts before public release |
+
 ## Remaining gaps before broad production use
 
-- No sandbox or child CPU/memory limits; inherited environment may expose CI credentials to the server.
+- No sandbox or child CPU/memory limits. The default inherited environment may expose CI credentials; opt-in clean environment mode reduces that exposure.
 - Windows direct-child termination does not yet cover descendants; detached Unix sessions may also escape process groups.
 - Redaction is key-based and cannot detect secrets in text or schema metadata; private JSON reports still contain server data.
 - Content checksums are not signatures; server binary and dependency provenance are not captured.

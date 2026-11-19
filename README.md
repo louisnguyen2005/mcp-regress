@@ -4,7 +4,7 @@
 
 This repository is an early prototype. The [product roadmap](docs/ROADMAP.md), [delivery backlog](docs/BACKLOG.md), [security model](docs/SECURITY.md), and [compatibility ledger](docs/COMPATIBILITY.md) describe the work required before broader production use. The CLI is an MCP client; an agent-facing MCP server is planned as an optional adapter.
 
-## Development milestone: v0.4
+## Development milestone: v0.5
 
 The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, and conservative change classification. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
 
@@ -97,6 +97,10 @@ cargo run --release -- check \
 
 Review baseline updates as code changes. A passing comparison means the configured tool surface and fixture results did not change in the observed run; it is not a security certification or a sandbox.
 
+## Child environment
+
+For trusted servers that need a minimal environment, add `env_clear = true` under `[server]` and set an absolute `command`. Only variables listed in `[server.env]` reach the process. This does not sandbox the process. Existing configs keep inheriting the runner environment unless you opt in.
+
 ## Result assertions
 
 Cases can assert exact result fields before ignored values are normalized:
@@ -134,7 +138,7 @@ CI compares the mock server with the reviewed `fixtures/baseline.json`. Regenera
 
 ## Enhancement planning
 
-The editable [enhancement tracker](outputs/mcp-regress-planning-20261119/mcp-regress-enhancement-tracker.xlsx) contains 24 proposed ideas and the current engineering backlog. Use filters and amber cells to assign priorities, owners, statuses and target releases. The engineering sheet is a snapshot; synchronize accepted work with `docs/BACKLOG.md` when implementation changes.
+The editable [real-world product ideas tracker](outputs/mcp-regress-real-world-ideas-20261119/mcp-regress-real-world-ideas.xlsx) contains 42 proposals, acceptance gates, dependencies, effort estimates, priorities, and the current engineering backlog snapshot. Use the status dropdowns (`todo`, `in_progress`, `finished`, `blocked`) and assign an owner or target stage as work is selected. Mark a task `finished` only after its acceptance evidence is complete. `docs/BACKLOG.md` remains the engineering source of truth; update it when an idea becomes implementation work. Product and commercial ideas are hypotheses and still need customer validation.
 
 ## License
 

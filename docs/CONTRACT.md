@@ -1,4 +1,4 @@
-# Local gate contract — v0.4
+# Local gate contract — v0.5
 
 ## Supported scope
 
@@ -59,3 +59,7 @@ A case can specify `timeout_ms = 250` to impose a shorter tool-call deadline. Th
 `[cases.assertions]` maps non-root RFC 6901 pointers to exact expected JSON values. Every path must exist and equal its expected value. Assertions run on the original tool result before ignore pointers and redaction; mismatches fail without printing actual or expected values. At most 1,000 assertions are allowed per case. Assertions cannot be combined with `expected_rpc_error`, since those cases have no tool result. They can be used with an explicitly expected tool-level error.
 
 See `examples/assertions.toml`. Default-empty assertions and absent case deadlines are omitted from fixture serialization, preserving existing v2 fixture digests. Adding or changing an assertion/deadline changes fixture provenance and requires an intentional baseline review.
+
+## Child environment isolation (v0.5)
+
+`[server] env_clear = true` starts the configured child with an empty environment, then supplies only the key/value pairs under `server.env`. Because command lookup may depend on `PATH`, the command must be absolute in this mode. This flag does not create a sandbox or limit filesystem/network access. With `env_clear` absent or false, behavior remains compatible: the runner environment is inherited and `[server.env]` overrides/adds values. Avoid putting secrets directly in a checked-in config; use an external secret mechanism to generate runtime configuration. Diagnostics do not include configured values.

@@ -60,7 +60,9 @@ fn main() {
                     .pointer("/params/arguments/text")
                     .and_then(Value::as_str)
                     .unwrap_or("");
-                let text = if variant == "changed" {
+                let text = if text == "env-check" {
+                    std::env::var("MCP_TEST_SECRET").unwrap_or_else(|_| "isolated".to_owned())
+                } else if variant == "changed" {
                     format!("echo: {text}")
                 } else {
                     text.to_owned()

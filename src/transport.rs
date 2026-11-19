@@ -28,6 +28,9 @@ pub struct StdioTransport {
 impl StdioTransport {
     pub fn spawn(server: &Server) -> Result<Self, String> {
         let mut command = Command::new(&server.command);
+        if server.env_clear {
+            command.env_clear();
+        }
         command
             .args(&server.args)
             .envs(&server.env)

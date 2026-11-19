@@ -52,3 +52,8 @@ Hosted validation for `f805b69` passed on all three operating systems ([run](htt
 FIX-02 adds exact JSON Pointer assertions evaluated before normalization/redaction and optional per-case tool deadlines. Five additional process tests verify success, mismatch privacy, missing paths, shorter deadlines, and invalid settings. Existing captures with no new settings retain their fixture digests. Future enhancement management is delivered in an editable XLSX tracker under `outputs/mcp-regress-planning-20261119/`; engineering status remains authoritative in the Markdown backlog and tracker edits are not automatically synchronized.
 
 Local v0.4 validation passes formatting, Clippy, 20 Rust tests, 24 real-process tests and the unchanged clean/drift baseline gates. The tracker contains 24 proposals and 30 engineering records, with recalculated counts, dropdowns, filters and frozen headers verified after export.
+
+
+## v0.5 clean child environment
+
+SEC-01 records the default execution/data policy and gives each open threat a responsible owner role. Individual security contacts remain a pre-release task. SEC-02 adds opt-in `server.env_clear`; explicit config variables are the only values forwarded and absolute executables are required. The compatible default keeps inherited environment behavior. Four E2E cases cover parent secret removal, explicit allowlisted values, unchanged legacy inheritance, and invalid relative commands. `python3 scripts/check.py` passes formatting, Clippy, 20 Rust tests, 28 real-process CLI tests, and clean/drift baseline gates on local Linux. Hosted cross-platform CI is pending for this change; no new agent interoperability claim is made.
