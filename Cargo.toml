@@ -10,7 +10,7 @@ description = "Deterministic MCP server regression checks for CI"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "signal"] }
 tempfile = "3"
 sha2 = "0.10"
