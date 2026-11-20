@@ -4,7 +4,7 @@ Updated 2026-11-20. "Planned" means no interoperability claim. For each supporte
 
 | Surface | Current state | Next validation |
 | --- | --- | --- |
-| MCP stdio client, 2025-06-18 | Implemented with bounded transport and validation; local mock evidence only, not conformance-certified | Independent servers, error/lifecycle/pagination corpus |
+| MCP stdio client, 2025-06-18 | Implemented with bounded transport and validation; one public server package passed the recorded read-only tool workflow, not conformance-certified | Three representative server fixtures, error/lifecycle/pagination corpus |
 | MCP 2025-11-25 | Planned | Negotiation and schema behavior |
 | MCP 2026-07-28 | Planned; has a different stateless request model | Version-specific lifecycle and metadata |
 | Streamable HTTP client | Planned | TLS/auth/routing/redirect/security matrix |
@@ -46,3 +46,7 @@ Commit `f805b69` passed the shared validation job on Linux, macOS, and Windows: 
 ## Process containment, 2026-11-20
 
 Commit `07c62b3` added opt-in clean child environment behavior and passed Linux/macOS/Windows CI: https://github.com/louisnguyen2005/mcp-regress/actions/runs/44560230750. Commit `98d2f0f` adds Windows Job Object containment and a Windows parent/child/grandchild timeout test; the full validation job passed on Linux, macOS, and Windows: https://github.com/louisnguyen2005/mcp-regress/actions/runs/44676697169. The Windows job executed the descendant cleanup test, and local checks cross-compiled to both `x86_64-pc-windows-gnu` and `x86_64-pc-windows-msvc`. Unix `setsid` escape behavior remains untested and unsupported; this is not independent MCP server or agent interoperability evidence.
+
+## Independent server run, 2026-11-20
+
+See the [sanitized evidence record](evidence/official-filesystem-interop-2026-11-20.md) and the reproducible [optional probe](../scripts/interop_official_filesystem.py). One Linux x86_64 run used the locked `@modelcontextprotocol/server-filesystem@2.4.0` package, read-only mode, a synthetic temporary directory, the `2025-06-18` initialize handshake, tool discovery, `list_directory`, and an exact `read_file` content assertion. Two captures had the same content digest and a separate `check` passed with zero changes. This verifies only the exercised stdio subset against this package version; it is not a protocol certification, a newer-profile claim, an agent interoperability run, or a security assessment.

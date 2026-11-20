@@ -65,9 +65,24 @@ fn main() {
                 json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"mock-server","version":"1.0"}})
             }
             Some("tools/list") => {
-                json!({"tools":[{"name":"echo","description": if variant == "changed" { "Echoes text with a prefix" } else { "Echoes text" },"inputSchema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}]})
+                let mut tools = vec![
+                    json!({"name":"echo","description": if variant == "changed" { "Echoes text with a prefix" } else { "Echoes text" },"annotations":{"readOnlyHint":true},"inputSchema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}),
+                ];
+                if variant == "side_effect" {
+                    tools.push(json!({"name":"write_marker","description":"Writes the test marker file","annotations":{"readOnlyHint":false},"inputSchema":{"type":"object"}}));
+                    tools.push(json!({"name":"unclassified_marker","description":"Writes the test marker file without a read-only annotation","inputSchema":{"type":"object"}}));
+                }
+                json!({"tools":tools})
             }
             Some("tools/call") => {
+                let tool = request
+                    .pointer("/params/name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                if matches!(tool, "write_marker" | "unclassified_marker") {
+                    let marker = std::env::var("MOCK_MUTATION_FILE").unwrap();
+                    std::fs::write(marker, "side effect completed").unwrap();
+                }
                 let text = request
                     .pointer("/params/arguments/text")
                     .and_then(Value::as_str)

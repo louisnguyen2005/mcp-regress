@@ -22,13 +22,15 @@ class CliTests(unittest.TestCase):
         self.baseline = self.root / 'baseline.json'
         self.configure()
 
-    def configure(self, variant='', extra='', case_extra='', server_extra='', command=None, server_env=None, case_text='hello'):
+    def configure(self, variant='', extra='', case_extra='', server_extra='', command=None, server_env=None, case_text='hello', case_tool='echo', case_arguments=None):
         env = {'MOCK_VARIANT': variant, **(server_env or {})}
         env_lines = '\n'.join(f'{json.dumps(key)}={json.dumps(value)}' for key, value in env.items())
+        arguments = {'text': case_text} if case_arguments is None else case_arguments
+        arguments_toml = '{' + ','.join(f'{json.dumps(key)}={json.dumps(value)}' for key,value in arguments.items()) + '}'
         self.config.write_text('version=1\n[server]\ncommand=' + json.dumps(str(command or SERVER)) +
             '\ntimeout_ms=500\nrun_timeout_ms=2000\n' + extra + '\n' + server_extra +
             '\n[server.env]\n' + env_lines +
-            '\n[[cases]]\nid="echo"\ntool="echo"\narguments={text=' + json.dumps(case_text) + '}\n' + case_extra)
+            '\n[[cases]]\nid="echo"\ntool=' + json.dumps(case_tool) + '\narguments=' + arguments_toml + '\n' + case_extra)
 
     def run_cli(self, *args, expected=0, extra_env=None):
         child_env=os.environ.copy()
@@ -127,6 +129,20 @@ class CliTests(unittest.TestCase):
         for extra in ['timeout_ms=0','[cases.assertions]\n"/bad~2"="x"','expected_rpc_error=-1\n[cases.assertions]\n"/x"="x"']:
             self.configure(case_extra=extra)
             self.run_cli('validate','--config',self.config,expected=1)
+
+    def test_unclassified_and_side_effecting_tools_require_explicit_opt_in(self):
+        for tool in ('write_marker', 'unclassified_marker'):
+            marker=self.root / f'{tool}.txt'
+            self.configure('side_effect',server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool=tool,case_arguments={})
+            result=self.record(expected=1)
+            self.assertIn('allow_side_effects opt-in required',result.stderr)
+            self.assertFalse(marker.exists())
+
+    def test_side_effecting_tool_runs_after_explicit_opt_in(self):
+        marker=self.root / 'approved-marker.txt'
+        self.configure('side_effect',case_extra='allow_side_effects=true',server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='write_marker',case_arguments={})
+        self.record()
+        self.assertEqual(marker.read_text(),'side effect completed')
 
     def test_minimal_server_environment_drops_parent_secrets(self):
         self.configure(server_extra='env_clear=true', case_text='env-check', case_extra='''[cases.assertions]

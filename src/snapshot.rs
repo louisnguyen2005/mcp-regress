@@ -192,9 +192,20 @@ async fn capture_inner(config: &Config) -> Result<Snapshot, String> {
             .iter()
             .filter_map(|tool| tool["name"].as_str())
             .collect();
+        let read_only_tool_names: std::collections::HashSet<_> = tools
+            .iter()
+            .filter(|tool| tool.pointer("/annotations/readOnlyHint") == Some(&Value::Bool(true)))
+            .filter_map(|tool| tool["name"].as_str())
+            .collect();
         for case in &config.cases {
             if !tool_names.contains(case.tool.as_str()) {
                 return Err("fixture refers to an unknown tool".into());
+            }
+            if !read_only_tool_names.contains(case.tool.as_str()) && !case.allow_side_effects {
+                return Err(
+                    "tool is not marked read-only; explicit allow_side_effects opt-in required"
+                        .into(),
+                );
             }
             let call = client.call_tool(&case.tool, case.arguments.clone());
             let response = if let Some(limit) = case.timeout_ms {

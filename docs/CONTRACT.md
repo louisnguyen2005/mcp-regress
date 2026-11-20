@@ -1,4 +1,4 @@
-# Local gate contract — v0.6
+# Local gate contract — v0.7
 
 ## Supported scope
 
@@ -25,6 +25,20 @@ The total run deadline includes startup and fixture execution; shutdown has a se
 Optional root `redact_keys = ["customer_email"]` adds case-insensitive response key names to built-in recursive redaction of `password`, `secret`, `token`, `api_key`, `apikey`, `authorization`, `access_token`, and `refresh_token`. Tool schema property names are preserved to retain the contract. Schema defaults/descriptions and unstructured text may contain secrets: sanitize fixtures and server metadata before capture. Redaction is not a secret detector.
 
 Optional per-case `expected_rpc_error = -32602` allows only that JSON-RPC error code; remote messages/data are discarded. `expect_tool_error = true` expects `isError: true` in a normal tool result. These expectations are mutually exclusive. Unexpected errors always abort capture. A successful tool result must contain a `content` array.
+
+### Safe tool-call default (v0.7)
+
+Tool calls are allowed by default only when the server marks that tool with `annotations.readOnlyHint = true`. If the hint is false, missing, or malformed, add `allow_side_effects = true` to that specific `[[cases]]` entry only after reviewing the tool and using disposable fixture data:
+
+```toml
+[[cases]]
+id = "create-test-record"
+tool = "create_record"
+allow_side_effects = true
+arguments = { name = "synthetic" }
+```
+
+The flag is included in fixture provenance. MCP annotations are server-supplied hints, not a security boundary: a server can mislabel a mutating tool as read-only, and a tool may have side effects that are not obvious from its name. The configured server remains trusted code with the runner's privileges. Review every fixture call and provide cleanup for disposable state. This release does not yet provide setup/teardown hooks.
 
 `ignore_pointers` accepts RFC 6901 pointers and replaces selected result values with `[IGNORED]` rather than deleting them, keeping array indexes stable. Missing pointers are errors. This is a normalization change from v0.1; recapture and review baselines using exclusions when upgrading. Arguments and case order are not altered before execution; saved cases are sorted by ID for deterministic comparison.
 

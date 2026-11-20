@@ -42,6 +42,8 @@ pub struct Case {
     pub tool: String,
     #[serde(default = "empty_object")]
     pub arguments: Value,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub allow_side_effects: bool,
     #[serde(default)]
     pub ignore_pointers: Vec<String>,
     #[serde(default)]
@@ -71,6 +73,9 @@ fn default_timeout() -> u64 {
 }
 fn empty_object() -> Value {
     serde_json::json!({})
+}
+fn is_false(value: &bool) -> bool {
+    !value
 }
 
 impl Config {

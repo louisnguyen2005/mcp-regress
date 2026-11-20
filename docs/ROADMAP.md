@@ -82,10 +82,11 @@ Ship reproducible builds for supported platforms, checksum/signature verificatio
 | Agent adapter versus skill-only distribution | Stage 4 | Pilot usage and agent compatibility runs |
 | Paid packaging and Agensi listing | Stage 5 | User demand, license review, and support cost |
 
-## Sources checked on 2026-11-19
+## Sources checked on 2026-11-20
 
 - MCP 2026-07-28 specification and changes: https://modelcontextprotocol.io/specification/2026-07-28 and https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/changelog.mdx
 - MCP client feature matrix: https://modelcontextprotocol.io/clients
+- Official filesystem MCP server docs and pinned npm package used for one interoperability run: https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md and https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem/v/2.4.0
 - OWASP MCP security guidance: https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html
 - VS Code MCP configuration: https://code.visualstudio.com/docs/agents/reference/mcp-configuration
 
