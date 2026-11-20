@@ -41,6 +41,36 @@ class CliTests(unittest.TestCase):
     def record(self, expected=0, extra_env=None):
         return self.run_cli('baseline','--config',self.config,'--output',self.baseline,expected=expected,extra_env=extra_env)
 
+    def assert_pid_stops(self, pid, timeout=3):
+        deadline = time.monotonic() + timeout
+        if os.name == 'nt':
+            import ctypes
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            handle_type = ctypes.c_void_p
+            kernel32.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+            kernel32.OpenProcess.restype = handle_type
+            kernel32.WaitForSingleObject.argtypes = [handle_type, ctypes.c_uint32]
+            kernel32.WaitForSingleObject.restype = ctypes.c_uint32
+            kernel32.CloseHandle.argtypes = [handle_type]
+            while time.monotonic() < deadline:
+                handle = kernel32.OpenProcess(0x00100000, 0, pid)  # SYNCHRONIZE
+                if not handle:
+                    error = ctypes.get_last_error()
+                    if error == 87:  # ERROR_INVALID_PARAMETER: process no longer exists
+                        return
+                    self.fail(f'could not verify process {pid} state (Windows error {error})')
+                result = kernel32.WaitForSingleObject(handle, 50)
+                kernel32.CloseHandle(handle)
+                if result == 0:  # WAIT_OBJECT_0
+                    return
+        else:
+            while time.monotonic() < deadline:
+                stat = Path('/proc') / str(pid) / 'stat'
+                if not stat.exists() or stat.read_text().split(') ')[1].startswith('Z'):
+                    return
+                time.sleep(0.05)
+        self.fail(f'process {pid} survived termination')
+
     def test_validate_never_launches_server(self):
         self.configure('hang')
         self.run_cli('validate','--config',self.config)
@@ -158,45 +188,54 @@ class CliTests(unittest.TestCase):
         self.assertIn('total run deadline', self.record(expected=1).stderr)
 
     @unittest.skipUnless(os.name == 'posix' and Path('/proc').exists(), 'Linux process state evidence')
-    def test_timeout_terminates_process_group(self):
+    def test_timeout_terminates_process_tree(self):
         pid_file=self.root / 'pid'
+        grandchild_pid_file=self.root / 'grandchild-pid'
         self.configure('tree_hang')
-        text=self.config.read_text().replace('[server.env]', '[server.env]\nMOCK_PID_FILE='+json.dumps(str(pid_file)))
+        text=self.config.read_text().replace('[server.env]', '[server.env]\nMOCK_PID_FILE='+json.dumps(str(pid_file))+'\nMOCK_GRANDCHILD_PID_FILE='+json.dumps(str(grandchild_pid_file)))
         self.config.write_text(text)
         self.record(expected=1)
-        pid=int(pid_file.read_text())
-        # Orphaned zombies can await init reaping; they are no longer running.
-        for _ in range(20):
-            stat=Path('/proc') / str(pid) / 'stat'
-            if not stat.exists() or stat.read_text().split(') ')[1].startswith('Z'):
-                return
-            time.sleep(0.05)
-        self.fail('descendant survived timeout')
+        for path in (pid_file, grandchild_pid_file):
+            self.assertTrue(path.exists(), f'process did not write pid evidence: {path.name}')
+            self.assert_pid_stops(int(path.read_text()))
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows Job Object process-tree evidence')
+    def test_windows_timeout_terminates_process_tree(self):
+        pid_file=self.root / 'pid'
+        grandchild_pid_file=self.root / 'grandchild-pid'
+        self.configure('tree_hang', server_env={
+            'MOCK_PID_FILE': str(pid_file),
+            'MOCK_GRANDCHILD_PID_FILE': str(grandchild_pid_file),
+        })
+        self.record(expected=1)
+        for path in (pid_file, grandchild_pid_file):
+            deadline=time.monotonic()+5
+            while not path.exists() and time.monotonic()<deadline:
+                time.sleep(0.02)
+            self.assertTrue(path.exists(), f'process did not write pid evidence: {path.name}')
+            self.assert_pid_stops(int(path.read_text()))
 
     @unittest.skipUnless(os.name == 'posix' and Path('/proc').exists(), 'Linux SIGINT process evidence')
     def test_sigint_cancels_and_terminates_descendants(self):
         pid_file=self.root/'pid'
+        grandchild_pid_file=self.root/'grandchild-pid'
         self.configure('tree_hang')
         text=self.config.read_text().replace('timeout_ms=500','timeout_ms=10000').replace('run_timeout_ms=2000','run_timeout_ms=20000')
-        text=text.replace('[server.env]', '[server.env]\nMOCK_PID_FILE='+json.dumps(str(pid_file)))
+        text=text.replace('[server.env]', '[server.env]\nMOCK_PID_FILE='+json.dumps(str(pid_file))+'\nMOCK_GRANDCHILD_PID_FILE='+json.dumps(str(grandchild_pid_file)))
         self.config.write_text(text)
         process=subprocess.Popen([str(CLI),'baseline','--config',str(self.config),'--output',str(self.baseline)],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         try:
             deadline=time.monotonic()+5
-            while not pid_file.exists() and time.monotonic()<deadline:
+            while (not pid_file.exists() or not grandchild_pid_file.exists()) and time.monotonic()<deadline:
                 time.sleep(0.02)
-            self.assertTrue(pid_file.exists(),'test server never started')
+            self.assertTrue(pid_file.exists() and grandchild_pid_file.exists(),'test server tree never started')
             process.send_signal(signal.SIGINT)
             stdout,stderr=process.communicate(timeout=5)
             self.assertEqual(process.returncode,1,stdout+stderr)
             self.assertIn('cancelled',stderr)
             self.assertFalse(self.baseline.exists())
-            stat=Path('/proc')/pid_file.read_text()/'stat'
-            for _ in range(50):
-                if not stat.exists() or stat.read_text().split(') ')[1].startswith('Z'):
-                    return
-                time.sleep(0.02)
-            self.fail('descendant survived SIGINT')
+            for path in (pid_file, grandchild_pid_file):
+                self.assert_pid_stops(int(path.read_text()))
         finally:
             if process.poll() is None:
                 process.kill(); process.communicate(timeout=5)

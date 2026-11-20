@@ -1,6 +1,6 @@
 # Protocol and agent compatibility ledger
 
-Updated 2026-11-19. "Planned" means no interoperability claim. For each supported combination record product version/commit, agent version, OS, transport, protocol revision, installation steps, tool discovery result, example check result, limitations, and evidence link.
+Updated 2026-11-20. "Planned" means no interoperability claim. For each supported combination record product version/commit, agent version, OS, transport, protocol revision, installation steps, tool discovery result, example check result, limitations, and evidence link.
 
 | Surface | Current state | Next validation |
 | --- | --- | --- |
@@ -42,3 +42,7 @@ v0.2 Linux development run: 2025-06-18 mock server initialize/list/call, paginat
 ## Hosted CI evidence
 
 Commit `f805b69` passed the shared validation job on Linux, macOS, and Windows: https://github.com/louisnguyen2005/mcp-regress/actions/runs/44485383205. Each runner checks formatting/lint, Rust tests, process E2E tests, deterministic captures and the reviewed baseline. Linux-specific `/proc` descendant/SIGINT tests are skipped on macOS/Windows. This establishes the local mock workflow on those runners; it is not independent-server or agent interoperability evidence.
+
+## Process containment, 2026-11-20
+
+Commit `07c62b3` added opt-in clean child environment behavior and passed Linux/macOS/Windows CI: https://github.com/louisnguyen2005/mcp-regress/actions/runs/44560230750. The next CORE-05 change adds Windows Job Object containment and a Windows-only parent/child/grandchild timeout test. Its code cross-compiles locally to both `x86_64-pc-windows-gnu` and `x86_64-pc-windows-msvc`, but Windows runtime evidence is pending the hosted CI run for that change. Unix `setsid` escape behavior remains untested and unsupported.

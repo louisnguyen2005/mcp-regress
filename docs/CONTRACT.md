@@ -1,4 +1,4 @@
-# Local gate contract — v0.5
+# Local gate contract — v0.6
 
 ## Supported scope
 
@@ -42,7 +42,7 @@ Tool removals, case changes/removals, annotation changes and capture contract ch
 
 ## Process cleanup
 
-Unix stdio servers start in a separate process group. Normal completion, request/run failure, cancellation, and dropped transports kill the group and reap the direct child. Descendants that deliberately detach into another session can escape; no sandbox is claimed. Windows currently terminates the direct child only; Job Object support is a remaining release blocker for full tree cleanup. SIGINT is handled by the CLI so transport destruction runs. SIGKILL and host crashes cannot run cleanup code.
+Unix stdio servers start in a separate process group. Windows servers start suspended and are assigned to a Job Object before they resume. Normal completion, request/run failure, cancellation, and dropped transports terminate the ordinary child process tree and reap the direct child. Descendants that deliberately detach into a new Unix session can escape; no sandbox is claimed. If Windows Job Object creation or assignment fails, startup fails rather than using direct-child-only cleanup. SIGINT is handled by the CLI so transport destruction runs. SIGKILL and host crashes cannot run cleanup code.
 
 ## Policy v1
 

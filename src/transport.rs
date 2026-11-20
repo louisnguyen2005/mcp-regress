@@ -23,6 +23,8 @@ pub struct StdioTransport {
     remaining: usize,
     #[cfg(unix)]
     group: Option<i32>,
+    #[cfg(windows)]
+    process_group: Option<processkit::ProcessGroup>,
 }
 
 impl StdioTransport {
@@ -40,6 +42,14 @@ impl StdioTransport {
             .kill_on_drop(true);
         #[cfg(unix)]
         command.process_group(0);
+        #[cfg(windows)]
+        let process_group = processkit::ProcessGroup::new()
+            .map_err(|_| "cannot create server process group".to_string())?;
+        #[cfg(windows)]
+        let mut child = process_group
+            .spawn(command)
+            .map_err(|_| "cannot start configured server".to_string())?;
+        #[cfg(not(windows))]
         let mut child = command
             .spawn()
             .map_err(|_| "cannot start configured server".to_string())?;
@@ -55,6 +65,8 @@ impl StdioTransport {
             remaining: server.max_output_bytes,
             #[cfg(unix)]
             group,
+            #[cfg(windows)]
+            process_group: Some(process_group),
         })
     }
 
@@ -66,6 +78,9 @@ impl StdioTransport {
                 libc::kill(-group, libc::SIGKILL);
             }
         }
+        #[cfg(windows)]
+        // Dropping the Job Object terminates the full contained process tree.
+        drop(self.process_group.take());
         let _ = self.child.start_kill();
     }
 }

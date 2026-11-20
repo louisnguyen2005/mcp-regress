@@ -7,7 +7,7 @@ fn main() {
     let variant = std::env::var("MOCK_VARIANT").unwrap_or_default();
     let _descendant = if variant == "tree_hang" {
         let child = std::process::Command::new(std::env::current_exe().unwrap())
-            .env("MOCK_VARIANT", "hang")
+            .env("MOCK_VARIANT", "tree_hang_child")
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::null())
             .spawn()
@@ -16,6 +16,17 @@ fn main() {
             std::fs::write(path, child.id().to_string()).unwrap();
         }
         Some(child)
+    } else if variant == "tree_hang_child" {
+        let grandchild = std::process::Command::new(std::env::current_exe().unwrap())
+            .env("MOCK_VARIANT", "hang")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        if let Ok(path) = std::env::var("MOCK_GRANDCHILD_PID_FILE") {
+            std::fs::write(path, grandchild.id().to_string()).unwrap();
+        }
+        Some(grandchild)
     } else {
         None
     };
@@ -29,6 +40,7 @@ fn main() {
         };
         if variant == "hang"
             || variant == "tree_hang"
+            || variant == "tree_hang_child"
             || (variant == "call_hang" && request["method"] == "tools/call")
         {
             std::thread::sleep(std::time::Duration::from_secs(120));

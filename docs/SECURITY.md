@@ -10,9 +10,9 @@ Reviewed 2026-11-19. This file is a design checklist for planned work and a stat
 4. Snapshots and reports can contain sensitive tool responses, arguments, URLs, identifiers, and error strings. Current `ignore_pointers` replaces selected values from successful tool responses; it is not comprehensive redaction.
 5. Future HTTP support creates an additional URL, network, OAuth and redirect boundary. Future agent adapter support creates a model-to-local-command boundary.
 
-## Implemented controls in v0.5
+## Implemented controls in v0.6
 
-Bounded incremental frames and total stdout/run limits replace unbounded line reads. JSON-RPC envelopes, response IDs, initialization identity/tools/revision and pagination are validated. Unexpected RPC/tool errors and all transport failures abort capture. Files are atomically replaced with private Unix permissions and snapshot content checksums. CLI SIGINT triggers transport cleanup, and Unix child groups are killed. Server stderr and remote RPC message/data are suppressed. Common response secret keys are redacted; console/Markdown omit response payloads. CI uses a reviewed baseline. Output aliases to inputs are rejected before execution. Policy exceptions are exact-name scoped, retain finding evidence, and expire; expired exceptions cannot suppress checks. Parent directories must still be trusted against concurrent replacement.
+Bounded incremental frames and total stdout/run limits replace unbounded line reads. JSON-RPC envelopes, response IDs, initialization identity/tools/revision and pagination are validated. Unexpected RPC/tool errors and all transport failures abort capture. Files are atomically replaced with private Unix permissions and snapshot content checksums. CLI SIGINT triggers transport cleanup, and Unix child groups are killed. On Windows, the child is assigned to a Job Object before it resumes; closing the job terminates ordinary descendants as well as the direct server. Job Object setup failures fail closed. Server stderr and remote RPC message/data are suppressed. Common response secret keys are redacted; console/Markdown omit response payloads. CI uses a reviewed baseline. Output aliases to inputs are rejected before execution. Policy exceptions are exact-name scoped, retain finding evidence, and expire; expired exceptions cannot suppress checks. Parent directories must still be trusted against concurrent replacement.
 
 An opt-in `server.env_clear` mode launches with an empty child environment, then adds only explicit server values. It requires an absolute executable. The default remains inherited for compatibility. Environment clearing reduces accidental secret forwarding but is not process isolation.
 
@@ -30,7 +30,7 @@ Ownership below is assigned by role so the work is not ownerless. The repository
 | Risk | Owner role | Follow-up |
 | --- | --- | --- |
 | Configured server command can access runner files, network and OS privileges; no CPU/memory sandbox exists | Project maintainer | [CORE-02](BACKLOG.md#delivery-backlog), [SEC-02](BACKLOG.md#delivery-backlog) |
-| Windows child descendants and detached Unix descendants may outlive cancellation | Cross-platform runtime maintainer | [CORE-05](BACKLOG.md#delivery-backlog) |
+| Unix descendants that deliberately start a new session may outlive cancellation | Cross-platform runtime maintainer | [CORE-05](BACKLOG.md#delivery-backlog) |
 | Secrets in free text, schemas, arguments or private reports can escape key-based redaction | Artifact and reporting maintainer | [DATA-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) |
 | Implemented MCP profile lacks independent server/client conformance evidence and newer protocol behavior | Protocol compatibility maintainer | [SPEC-02](BACKLOG.md#delivery-backlog), [CORE-03](BACKLOG.md#delivery-backlog) |
 | Future remote transport could create SSRF, redirect, DNS rebinding and OAuth credential risks | Transport security maintainer | [HTTP-01](BACKLOG.md#delivery-backlog), [HTTP-02](BACKLOG.md#delivery-backlog) |
@@ -40,7 +40,7 @@ Ownership below is assigned by role so the work is not ownerless. The repository
 ## Remaining gaps before broad production use
 
 - No sandbox or child CPU/memory limits. The default inherited environment may expose CI credentials; opt-in clean environment mode reduces that exposure.
-- Windows direct-child termination does not yet cover descendants; detached Unix sessions may also escape process groups.
+- Unix descendants that deliberately start a new session may escape process-group termination.
 - Redaction is key-based and cannot detect secrets in text or schema metadata; private JSON reports still contain server data.
 - Content checksums are not signatures; server binary and dependency provenance are not captured.
 - Only the 2025-06-18 profile is implemented and has only local mock evidence. Independent conformance is outstanding.

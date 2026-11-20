@@ -4,9 +4,9 @@
 
 This repository is an early prototype. The [product roadmap](docs/ROADMAP.md), [delivery backlog](docs/BACKLOG.md), [security model](docs/SECURITY.md), and [compatibility ledger](docs/COMPATIBILITY.md) describe the work required before broader production use. The CLI is an MCP client; an agent-facing MCP server is planned as an optional adapter.
 
-## Development milestone: v0.5
+## Development milestone: v0.6
 
-The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, and conservative change classification. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
+The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group and Windows Job Object cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, and conservative change classification. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
 
 ## Features
 
@@ -20,7 +20,7 @@ The local engine now has bounded stdout framing and run budgets, validated JSON-
 
 ## Quick start
 
-From this directory, with a Rust toolchain installed:
+From this directory, with Rust 1.88 or later installed:
 
 ```sh
 cargo build --release
