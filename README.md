@@ -155,7 +155,7 @@ CI compares the mock server with the reviewed `fixtures/baseline.json`. Regenera
 
 ## Enhancement planning
 
-The editable [real-world product ideas tracker](outputs/mcp-regress-real-world-ideas-20261119/mcp-regress-real-world-ideas.xlsx) contains 42 proposals, acceptance gates, dependencies, effort estimates, priorities, and the current engineering backlog snapshot. Use the status dropdowns (`todo`, `in_progress`, `finished`, `blocked`) and assign an owner or target stage as work is selected. Mark a task `finished` only after its acceptance evidence is complete. `docs/BACKLOG.md` remains the engineering source of truth; update it when an idea becomes implementation work. Product and commercial ideas are hypotheses and still need customer validation.
+The editable [real-world product ideas tracker](outputs/mcp-regress-real-world-ideas-20261119/mcp-regress-real-world-ideas.xlsx) contains 46 proposals, acceptance gates, dependencies, effort estimates, priorities, and the current engineering backlog snapshot. Recent additions cite research papers and MCP repositories; they are technical evidence, not customer-demand validation. Use the status dropdowns (`todo`, `in_progress`, `finished`, `blocked`) and assign an owner or target stage as work is selected. Mark a task `finished` only after its acceptance evidence is complete. `docs/BACKLOG.md` remains the engineering source of truth; update it when an idea becomes implementation work. Product and commercial ideas are hypotheses and still need customer validation.
 
 ## License
 

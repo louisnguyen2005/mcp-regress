@@ -10,11 +10,13 @@ Reviewed 2026-11-20. This file is a design checklist for planned work and a stat
 4. Snapshots and reports can contain sensitive tool responses, arguments, URLs, identifiers, and error strings. Current `ignore_pointers` replaces selected values from successful tool responses; it is not comprehensive redaction.
 5. Future HTTP support creates an additional URL, network, OAuth and redirect boundary. Future agent adapter support creates a model-to-local-command boundary.
 
-## Implemented controls in v0.8
+## Implemented controls
 
 Bounded incremental frames and total stdout/run limits replace unbounded line reads. JSON-RPC envelopes, response IDs, initialization identity/tools/revision and pagination are validated. Unexpected RPC/tool errors and all transport failures abort capture. Files are atomically replaced with private Unix permissions and snapshot content checksums. CLI SIGINT triggers transport cleanup, and Unix child groups are killed. On Windows, the child is assigned to a Job Object before it resumes; closing the job terminates ordinary descendants as well as the direct server. Job Object setup failures fail closed. Server stderr and remote RPC message/data are suppressed. Common response secret keys are redacted; console/Markdown omit response payloads. CI uses a reviewed baseline. Output aliases to inputs are rejected before execution. Policy exceptions are exact-name scoped, retain finding evidence, and expire; expired exceptions cannot suppress checks. Parent directories must still be trusted against concurrent replacement.
 
 An opt-in `server.env_clear` mode launches with an empty child environment, then adds only explicit server values. It requires an absolute executable. The default remains inherited for compatibility. Environment clearing reduces accidental secret forwarding but is not process isolation. Fixture cases classify their effect as `auto`, `read_only`, `mutating`, or `destructive`. `auto` requires `readOnlyHint: true`; an explicit `read_only` value is a trusted maintainer assertion and can override a missing or false server hint. Mutating/destructive cases require `allow_side_effects = true` and a cleanup action. Setup and cleanup are MCP tool calls; cleanup is attempted after setup/case failures, and a cleanup error fails capture before baseline storage. This does not guarantee rollback: a tool can misrepresent its behavior, an external action can be irreversible, or a process/total-run timeout can interrupt cleanup. Operators must review every action and use disposable test data.
+
+SEC-03 adds deterministic mock/E2E cases for instruction-like text and canaries in tool descriptions, input schemas, tool results, and RPC errors. They verify that terminal and Markdown output stay payload-free, private JSON artifacts remain owner-only on Unix, and failed hostile RPC capture does not replace an existing baseline. The private JSON report intentionally retains server-controlled values for review. These fixtures cover known test payloads only; they do not detect arbitrary free-text secrets or establish that an LLM agent will resist prompt injection.
 
 ## Default data and execution policy
 
@@ -33,7 +35,7 @@ Ownership below is assigned by role so the work is not ownerless. The repository
 | A server can mislabel a mutating tool with `readOnlyHint: true`, or a fixture can misclassify it as read-only; the gate cannot prove tool semantics | Fixture and security maintainer | [FIX-01](BACKLOG.md#delivery-backlog); review calls and use disposable data |
 | Cleanup can fail, be interrupted by the total-run deadline, or not undo an irreversible external effect | Fixture and security maintainer | [FIX-01](BACKLOG.md#delivery-backlog); disposable state, cleanup tests, and operator review |
 | Unix descendants that deliberately start a new session may outlive cancellation | Cross-platform runtime maintainer | [CORE-05](BACKLOG.md#delivery-backlog) |
-| Secrets in free text, schemas, arguments or private reports can escape key-based redaction | Artifact and reporting maintainer | [DATA-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) |
+| Secrets in free text, schemas, arguments or private reports can escape key-based redaction | Artifact and reporting maintainer | [SEC-03](BACKLOG.md#delivery-backlog) covers known canaries at selected sinks; [DATA-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) remain open for broader controls |
 | Implemented MCP profile lacks independent server/client conformance evidence and newer protocol behavior | Protocol compatibility maintainer | [SPEC-02](BACKLOG.md#delivery-backlog), [CORE-03](BACKLOG.md#delivery-backlog) |
 | Future remote transport could create SSRF, redirect, DNS rebinding and OAuth credential risks | Transport security maintainer | [HTTP-01](BACKLOG.md#delivery-backlog), [HTTP-02](BACKLOG.md#delivery-backlog) |
 | Future agent adapter could expose local commands or treat malicious server text as instructions | Agent integration maintainer | [AGENT-02](BACKLOG.md#delivery-backlog), [UX-01](BACKLOG.md#delivery-backlog) |
@@ -44,6 +46,7 @@ Ownership below is assigned by role so the work is not ownerless. The repository
 - No sandbox or child CPU/memory limits. The default inherited environment may expose CI credentials; opt-in clean environment mode reduces that exposure.
 - Unix descendants that deliberately start a new session may escape process-group termination.
 - Redaction is key-based and cannot detect secrets in text or schema metadata; private JSON reports still contain server data.
+- The SEC-03 corpus only verifies selected synthetic payloads and output sinks; it is not general secret scanning or an agent prompt-injection evaluation.
 - Content checksums are not signatures; server binary and dependency provenance are not captured.
 - Only the 2025-06-18 profile is implemented. One bounded public-server run exists; broad protocol conformance is outstanding.
 - Tool annotations and fixture effect declarations are claims; the call gate cannot prove actual behavior. Cleanup failure blocks capture, but cleanup cannot guarantee rollback and may be interrupted by process termination or the total-run deadline.
