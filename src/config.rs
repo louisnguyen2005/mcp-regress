@@ -42,8 +42,14 @@ pub struct Case {
     pub tool: String,
     #[serde(default = "empty_object")]
     pub arguments: Value,
+    #[serde(default, skip_serializing_if = "FixtureEffect::is_auto")]
+    pub effect: FixtureEffect,
     #[serde(default, skip_serializing_if = "is_false")]
     pub allow_side_effects: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<ToolAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cleanup: Option<ToolAction>,
     #[serde(default)]
     pub ignore_pointers: Vec<String>,
     #[serde(default)]
@@ -54,6 +60,30 @@ pub struct Case {
     pub timeout_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub assertions: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FixtureEffect {
+    #[default]
+    Auto,
+    ReadOnly,
+    Mutating,
+    Destructive,
+}
+
+impl FixtureEffect {
+    fn is_auto(effect: &Self) -> bool {
+        *effect == Self::Auto
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ToolAction {
+    pub tool: String,
+    #[serde(default = "empty_object")]
+    pub arguments: Value,
 }
 
 fn default_protocol() -> String {
@@ -132,6 +162,43 @@ impl Config {
             }
             if !case.arguments.is_object() {
                 return Err(format!("case {} arguments must be a JSON object", case.id));
+            }
+            match case.effect {
+                FixtureEffect::Auto
+                    if case.allow_side_effects
+                        || case.setup.is_some()
+                        || case.cleanup.is_some() =>
+                {
+                    return Err(
+                        "side-effecting cases require an explicit effect classification".into(),
+                    );
+                }
+                FixtureEffect::ReadOnly
+                    if case.allow_side_effects
+                        || case.setup.is_some()
+                        || case.cleanup.is_some() =>
+                {
+                    return Err(
+                        "read-only cases cannot opt in to side effects or define lifecycle actions"
+                            .into(),
+                    );
+                }
+                FixtureEffect::Mutating | FixtureEffect::Destructive
+                    if !case.allow_side_effects || case.cleanup.is_none() =>
+                {
+                    return Err(
+                        "mutating and destructive cases require allow_side_effects=true and cleanup"
+                            .into(),
+                    );
+                }
+                _ => {}
+            }
+            for action in case.setup.iter().chain(case.cleanup.iter()) {
+                if action.tool.trim().is_empty() || !action.arguments.is_object() {
+                    return Err(
+                        "fixture lifecycle actions require a tool and object arguments".into(),
+                    );
+                }
             }
             if case.expect_tool_error && case.expected_rpc_error.is_some() {
                 return Err("case cannot expect both RPC and tool errors".into());

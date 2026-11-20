@@ -1,5 +1,5 @@
 use crate::{
-    config::Config,
+    config::{Case, Config, FixtureEffect, ToolAction},
     protocol::{Client, RequestError},
 };
 use serde::{Deserialize, Serialize};
@@ -201,63 +201,48 @@ async fn capture_inner(config: &Config) -> Result<Snapshot, String> {
             if !tool_names.contains(case.tool.as_str()) {
                 return Err("fixture refers to an unknown tool".into());
             }
-            if !read_only_tool_names.contains(case.tool.as_str()) && !case.allow_side_effects {
+            for action in case.setup.iter().chain(case.cleanup.iter()) {
+                if !tool_names.contains(action.tool.as_str()) {
+                    return Err("fixture lifecycle refers to an unknown tool".into());
+                }
+            }
+            if case.effect == FixtureEffect::Auto
+                && !read_only_tool_names.contains(case.tool.as_str())
+            {
                 return Err(
-                    "tool is not marked read-only; explicit allow_side_effects opt-in required"
+                    "tool is not marked read-only; classify its effect and opt in with cleanup"
                         .into(),
                 );
             }
-            let call = client.call_tool(&case.tool, case.arguments.clone());
-            let response = if let Some(limit) = case.timeout_ms {
-                tokio::time::timeout(Duration::from_millis(limit), call)
+
+            let mut case_error = if let Some(setup) = &case.setup {
+                call_lifecycle_action(&mut client, setup, case.timeout_ms, "setup")
                     .await
-                    .map_err(|_| "case deadline exceeded".to_string())?
+                    .err()
             } else {
-                call.await
+                None
             };
-            let outcome = match response {
-                Ok(mut value) => {
-                    if case.expected_rpc_error.is_some() {
-                        return Err("expected RPC error was not returned".into());
+            let outcome = if case_error.is_none() {
+                match run_case(&mut client, case, &config.redact_keys).await {
+                    Ok(outcome) => Some(outcome),
+                    Err(error) => {
+                        case_error = Some(error);
+                        None
                     }
-                    let is_error = match value.get("isError") {
-                        None => false,
-                        Some(Value::Bool(b)) => *b,
-                        _ => return Err("invalid tool isError flag".into()),
-                    };
-                    if !value.get("content").is_some_and(Value::is_array) {
-                        return Err("tool result missing content array".into());
-                    }
-                    if is_error != case.expect_tool_error {
-                        return Err("tool error did not match case expectation".into());
-                    }
-                    for (pointer, expected) in &case.assertions {
-                        if value.pointer(pointer) != Some(expected) {
-                            // Neither actual values nor expectations belong in diagnostics.
-                            return Err(
-                                "result assertion failed (values omitted for privacy)".into()
-                            );
-                        }
-                    }
-                    for pointer in &case.ignore_pointers {
-                        // Replace instead of remove: array indexes stay stable across exclusions.
-                        let field = value
-                            .pointer_mut(pointer)
-                            .ok_or("ignore pointer does not exist in tool result")?;
-                        *field = json!("[IGNORED]");
-                    }
-                    redact(&mut value, &config.redact_keys);
-                    Outcome::Ok(value)
                 }
-                Err(RequestError::Rpc { code }) if case.expected_rpc_error == Some(code) => {
-                    Outcome::RpcError(format!("code:{code}"))
-                }
-                Err(error) => return Err(error.to_string()),
+            } else {
+                None
             };
+            if let Some(cleanup) = &case.cleanup {
+                call_lifecycle_action(&mut client, cleanup, case.timeout_ms, "cleanup").await?;
+            }
+            if let Some(error) = case_error {
+                return Err(error);
+            }
             cases.push(CaseResult {
                 id: case.id.clone(),
                 tool: case.tool.clone(),
-                outcome,
+                outcome: outcome.expect("successful case has an outcome"),
             });
         }
         cases.sort_by(|a, b| a.id.cmp(&b.id));
@@ -292,6 +277,82 @@ async fn capture_inner(config: &Config) -> Result<Snapshot, String> {
     .await;
     client.stop().await;
     result
+}
+
+async fn call_lifecycle_action(
+    client: &mut Client,
+    action: &ToolAction,
+    timeout_ms: Option<u64>,
+    phase: &str,
+) -> Result<(), String> {
+    let call = client.call_tool(&action.tool, action.arguments.clone());
+    let response = if let Some(limit) = timeout_ms {
+        tokio::time::timeout(Duration::from_millis(limit), call)
+            .await
+            .map_err(|_| format!("fixture {phase} deadline exceeded"))?
+    } else {
+        call.await
+    }
+    .map_err(|_| format!("fixture {phase} failed"))?;
+    let is_error = match response.get("isError") {
+        None => false,
+        Some(Value::Bool(value)) => *value,
+        _ => return Err(format!("fixture {phase} returned an invalid error flag")),
+    };
+    if is_error || !response.get("content").is_some_and(Value::is_array) {
+        return Err(format!("fixture {phase} failed"));
+    }
+    Ok(())
+}
+
+async fn run_case(
+    client: &mut Client,
+    case: &Case,
+    redact_keys: &[String],
+) -> Result<Outcome, String> {
+    let call = client.call_tool(&case.tool, case.arguments.clone());
+    let response = if let Some(limit) = case.timeout_ms {
+        tokio::time::timeout(Duration::from_millis(limit), call)
+            .await
+            .map_err(|_| "case deadline exceeded".to_string())?
+    } else {
+        call.await
+    };
+    match response {
+        Ok(mut value) => {
+            if case.expected_rpc_error.is_some() {
+                return Err("expected RPC error was not returned".into());
+            }
+            let is_error = match value.get("isError") {
+                None => false,
+                Some(Value::Bool(b)) => *b,
+                _ => return Err("invalid tool isError flag".into()),
+            };
+            if !value.get("content").is_some_and(Value::is_array) {
+                return Err("tool result missing content array".into());
+            }
+            if is_error != case.expect_tool_error {
+                return Err("tool error did not match case expectation".into());
+            }
+            for (pointer, expected) in &case.assertions {
+                if value.pointer(pointer) != Some(expected) {
+                    return Err("result assertion failed (values omitted for privacy)".into());
+                }
+            }
+            for pointer in &case.ignore_pointers {
+                let field = value
+                    .pointer_mut(pointer)
+                    .ok_or("ignore pointer does not exist in tool result")?;
+                *field = json!("[IGNORED]");
+            }
+            redact(&mut value, redact_keys);
+            Ok(Outcome::Ok(value))
+        }
+        Err(RequestError::Rpc { code }) if case.expected_rpc_error == Some(code) => {
+            Ok(Outcome::RpcError(format!("code:{code}")))
+        }
+        Err(error) => Err(error.to_string()),
+    }
 }
 
 /// Explicit key redaction applies recursively before output reaches storage.

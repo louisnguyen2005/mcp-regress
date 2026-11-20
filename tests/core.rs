@@ -110,6 +110,36 @@ fn validates_pointer_escapes_and_config_limits() {
     .unwrap();
     assert!(config.validate().is_err());
 }
+
+#[test]
+fn fixture_effects_require_approval_and_cleanup_for_side_effects() {
+    let config = |case_fields: &str| {
+        toml::from_str::<Config>(&format!(
+            "version=1\n[server]\ncommand='server'\n[[cases]]\nid='case'\ntool='write'\narguments={{}}\n{case_fields}"
+        ))
+        .unwrap()
+    };
+    assert!(config("").validate().is_ok());
+    assert!(config("effect='read_only'").validate().is_ok());
+    for fields in [
+        "allow_side_effects=true",
+        "effect='mutating'\nallow_side_effects=true",
+        "effect='mutating'\ncleanup={tool='cleanup'}",
+        "effect='read_only'\nsetup={tool='setup'}",
+        "effect='destructive'\nallow_side_effects=true\ncleanup={tool='cleanup',arguments=[]}",
+    ] {
+        assert!(
+            config(fields).validate().is_err(),
+            "accepted invalid fields: {fields}"
+        );
+    }
+    for effect in ["mutating", "destructive"] {
+        let fields = format!(
+            "effect='{effect}'\nallow_side_effects=true\nsetup={{tool='setup'}}\ncleanup={{tool='cleanup'}}"
+        );
+        assert!(config(&fields).validate().is_ok());
+    }
+}
 #[test]
 fn redacts_nested_secrets_and_custom_keys() {
     let mut value = json!({"nested":[{"TOKEN":"CANARY","customer":"PRIVATE"}],"normal":"ok"});

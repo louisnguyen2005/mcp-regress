@@ -32,4 +32,4 @@ E2E coverage in `tests/e2e.py` verifies blocking with false and missing hints, s
 
 ## Revisit trigger
 
-When fixture lifecycle hooks are designed, when common server annotations prove insufficient, or when maintaining config v2 migration policy.
+Fixture lifecycle and explicit effect classifications extend this decision in [ADR 0007](0007-fixture-effect-lifecycle.md).

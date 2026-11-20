@@ -1,0 +1,18 @@
+version = 1
+
+[server]
+command = "./target/debug/examples/mock_server"
+timeout_ms = 30000
+
+[server.env]
+MOCK_VARIANT = "effect_success"
+MOCK_MUTATION_FILE = "target/mcp-regress-lifecycle-marker.txt"
+
+[[cases]]
+id = "mutating-lifecycle"
+tool = "run_marker"
+effect = "mutating"
+allow_side_effects = true
+arguments = {}
+setup = { tool = "setup_marker" }
+cleanup = { tool = "cleanup_marker" }

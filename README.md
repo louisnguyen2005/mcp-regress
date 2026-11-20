@@ -4,9 +4,9 @@
 
 This repository is an early prototype. The [product roadmap](docs/ROADMAP.md), [delivery backlog](docs/BACKLOG.md), [security model](docs/SECURITY.md), and [compatibility ledger](docs/COMPATIBILITY.md) describe the work required before broader production use. The CLI is an MCP client; an agent-facing MCP server is planned as an optional adapter.
 
-## Development milestone: v0.7
+## Development milestone: v0.8
 
-The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group and Windows Job Object cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, and conservative change classification. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
+The local engine now has bounded stdout framing and run budgets, validated JSON-RPC responses, explicit expected errors, Unix process-group and Windows Job Object cleanup, recursive response key redaction, atomic private artifact writes, snapshot checksums/provenance, conservative change classification, and fixture effect/lifecycle controls. See the [behavior and migration contract](docs/CONTRACT.md) and [implementation evidence](docs/PROGRESS.md).
 
 ## Features
 
@@ -17,7 +17,7 @@ The local engine now has bounded stdout framing and run budgets, validated JSON-
 - CI exit codes: `0` for pass, `1` for execution/configuration error, `2` for a policy-triggering difference.
 - Configurable `--fail-on any|breaking|none`; tool and case additions are warnings; removals and behavior changes block by default. Unproven schema changes are inconclusive and also block.
 - Direct process execution without a shell. Child processes have request and total-run timeouts and are stopped after capture.
-- Tool calls need a read-only annotation or a per-case `allow_side_effects = true` opt-in.
+- Unclassified calls require a server read-only hint; mutating and destructive fixtures require explicit opt-in plus cleanup.
 
 ## Quick start
 
@@ -64,10 +64,25 @@ id = "lookup-known-user"
 tool = "lookup_user"
 arguments = { user_id = "fixture-1" }
 ignore_pointers = ["/content/0/metadata/generated_at"]
-# If lookup_user lacks annotations.readOnlyHint = true, add allow_side_effects = true after review.
+# Optional explicit classification when a safe tool lacks the server hint:
+# effect = "read_only"
 ```
 
-Run fixture calls only against a server and test data that you control. The tool invokes each configured MCP tool; it does not sandbox the server. Calls proceed by default only for tools marked `annotations.readOnlyHint = true`; use `allow_side_effects = true` on a specific case only after reviewing the tool and setting up disposable data. Server annotations are hints, not a security boundary. Keep snapshots and reports private if fixture responses may contain secrets. `ignore_pointers` replaces selected response values with `[IGNORED]` and fails if a path is absent. Common secret keys are redacted recursively in responses; unstructured text and schema metadata still require sanitized fixtures. Server stderr and remote RPC error messages are discarded.
+For a mutating fixture, set `effect = "mutating"`, `allow_side_effects = true`, and a cleanup action. `setup` is optional, and both lifecycle actions use static MCP tool arguments. See the runnable [lifecycle example](examples/fixture-lifecycle.toml):
+
+```toml
+setup = { tool = "create_record", arguments = { id = "fixture-1" } }
+cleanup = { tool = "delete_record", arguments = { id = "fixture-1" } }
+```
+
+Run the repository example with:
+
+```sh
+cargo build --example mock_server
+cargo run -- baseline --config examples/fixture-lifecycle.toml --output /tmp/lifecycle-baseline.json
+```
+
+Cleanup runs after setup or case failures; a cleanup failure aborts capture and leaves the baseline untouched. A process or total-run timeout can interrupt cleanup, so use disposable data and credentials. Explicit classifications and server annotations are claims, not a sandbox or proof of tool behavior. Keep snapshots and reports private if fixture responses may contain secrets. `ignore_pointers` replaces selected response values with `[IGNORED]` and fails if a path is absent. Common secret keys are redacted recursively in responses; unstructured text and schema metadata still require sanitized fixtures. Server stderr and remote RPC error messages are discarded.
 
 The server must speak newline-delimited MCP JSON-RPC over stdio. Protocol messages on stdout must be valid JSON; diagnostics should go to stderr. The client requests MCP protocol version `2025-06-18`. Only stdio is supported in this release.
 

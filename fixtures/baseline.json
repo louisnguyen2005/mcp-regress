@@ -2,7 +2,7 @@
   "format_version": 2,
   "provenance": {
     "protocol_version": "2025-06-18",
-    "runner_version": "0.7.0",
+    "runner_version": "0.8.0",
     "fixture_digest": "c484324a6c24823a50b6658f96c676b2d27720905e2e8c4da01e4458cfe34e4f",
     "content_digest": "2c5c6f609060575c7305a8704d1f5594f65535903cb16596f6d600ab4c8f4d01"
   },

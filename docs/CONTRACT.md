@@ -1,4 +1,4 @@
-# Local gate contract — v0.7
+# Local gate contract — v0.8
 
 ## Supported scope
 
@@ -26,19 +26,28 @@ Optional root `redact_keys = ["customer_email"]` adds case-insensitive response 
 
 Optional per-case `expected_rpc_error = -32602` allows only that JSON-RPC error code; remote messages/data are discarded. `expect_tool_error = true` expects `isError: true` in a normal tool result. These expectations are mutually exclusive. Unexpected errors always abort capture. A successful tool result must contain a `content` array.
 
-### Safe tool-call default (v0.7)
+### Fixture effects and lifecycle (v0.8)
 
-Tool calls are allowed by default only when the server marks that tool with `annotations.readOnlyHint = true`. If the hint is false, missing, or malformed, add `allow_side_effects = true` to that specific `[[cases]]` entry only after reviewing the tool and using disposable fixture data:
+The default `effect = "auto"` permits a call only when its tool has `annotations.readOnlyHint = true`. A maintainer can explicitly classify a tool as read-only with `effect = "read_only"`, including when the server hint is missing or false; that setting is a trusted config assertion and requires review. For `mutating` and `destructive` calls, `allow_side_effects = true` and a cleanup tool action are both required; an optional setup action can prepare deterministic test data:
 
 ```toml
 [[cases]]
-id = "create-test-record"
-tool = "create_record"
+id = "update-fixture-record"
+tool = "update_record"
+effect = "mutating" # auto | read_only | mutating | destructive
 allow_side_effects = true
-arguments = { name = "synthetic" }
+arguments = { id = "fixture-1", name = "after" }
+setup = { tool = "create_record", arguments = { id = "fixture-1", name = "before" } }
+cleanup = { tool = "delete_record", arguments = { id = "fixture-1" } }
 ```
 
-The flag is included in fixture provenance. MCP annotations are server-supplied hints, not a security boundary: a server can mislabel a mutating tool as read-only, and a tool may have side effects that are not obvious from its name. The configured server remains trusted code with the runner's privileges. Review every fixture call and provide cleanup for disposable state. This release does not yet provide setup/teardown hooks.
+`setup` and `cleanup` are ordinary MCP tool calls with static arguments. Lifecycle results are not written to the snapshot. Setup runs before the case; cleanup is attempted after setup or case failure, and a failed cleanup aborts capture so no baseline is produced. Each action is bounded by the case deadline and the server/overall run limits. A process termination or total-run deadline can still interrupt cleanup.
+
+Fixture effect, opt-in, and lifecycle actions are included in fixture provenance when configured. Server annotations and maintainer classifications are claims, not a security boundary: a server can lie, and cleanup may not undo an irreversible action. The configured server runs with the runner's privileges. Use disposable server state and credentials, especially for `destructive` cases.
+
+#### Migration from v0.7
+
+Existing read-only fixtures need no changes. A v0.7 case with `allow_side_effects = true` must now add `effect = "mutating"` or `effect = "destructive"` and a `cleanup = { tool = ..., arguments = ... }` action. Otherwise `validate` rejects it before launching the server. Existing default `auto` values are omitted during serialization to preserve fixture digests.
 
 `ignore_pointers` accepts RFC 6901 pointers and replaces selected result values with `[IGNORED]` rather than deleting them, keeping array indexes stable. Missing pointers are errors. This is a normalization change from v0.1; recapture and review baselines using exclusions when upgrading. Arguments and case order are not altered before execution; saved cases are sorted by ID for deterministic comparison.
 

@@ -72,6 +72,11 @@ fn main() {
                     tools.push(json!({"name":"write_marker","description":"Writes the test marker file","annotations":{"readOnlyHint":false},"inputSchema":{"type":"object"}}));
                     tools.push(json!({"name":"unclassified_marker","description":"Writes the test marker file without a read-only annotation","inputSchema":{"type":"object"}}));
                 }
+                if variant.starts_with("effect_") {
+                    for name in ["setup_marker", "run_marker", "cleanup_marker"] {
+                        tools.push(json!({"name":name,"description":"Runs a fixture lifecycle action","annotations":{"readOnlyHint":false},"inputSchema":{"type":"object"}}));
+                    }
+                }
                 json!({"tools":tools})
             }
             Some("tools/call") => {
@@ -79,8 +84,21 @@ fn main() {
                     .pointer("/params/name")
                     .and_then(Value::as_str)
                     .unwrap_or("");
+                let marker = std::env::var("MOCK_MUTATION_FILE").ok();
+                match tool {
+                    "setup_marker" => {
+                        std::fs::write(marker.as_deref().unwrap(), "setup").unwrap();
+                    }
+                    "run_marker" => {
+                        std::fs::write(marker.as_deref().unwrap(), "case ran").unwrap();
+                    }
+                    "cleanup_marker" if variant != "effect_cleanup_failure" => {
+                        let _ = std::fs::remove_file(marker.as_deref().unwrap());
+                    }
+                    _ => {}
+                }
                 if matches!(tool, "write_marker" | "unclassified_marker") {
-                    let marker = std::env::var("MOCK_MUTATION_FILE").unwrap();
+                    let marker = marker.as_deref().unwrap();
                     std::fs::write(marker, "side effect completed").unwrap();
                 }
                 let text = request
@@ -94,7 +112,10 @@ fn main() {
                 } else {
                     text.to_owned()
                 };
-                json!({"content":[{"type":"text","text":text}],"isError":false})
+                let is_error = (variant == "effect_setup_failure" && tool == "setup_marker")
+                    || (variant == "effect_main_failure" && tool == "run_marker")
+                    || (variant == "effect_cleanup_failure" && tool == "cleanup_marker");
+                json!({"content":[{"type":"text","text":text}],"isError":is_error})
             }
             _ => json!({}),
         };

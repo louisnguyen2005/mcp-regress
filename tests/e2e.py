@@ -135,14 +135,50 @@ class CliTests(unittest.TestCase):
             marker=self.root / f'{tool}.txt'
             self.configure('side_effect',server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool=tool,case_arguments={})
             result=self.record(expected=1)
-            self.assertIn('allow_side_effects opt-in required',result.stderr)
+            self.assertIn('classify its effect and opt in with cleanup',result.stderr)
             self.assertFalse(marker.exists())
 
-    def test_side_effecting_tool_runs_after_explicit_opt_in(self):
+    def lifecycle_case(self):
+        return '''effect="mutating"
+allow_side_effects=true
+setup={tool="setup_marker"}
+cleanup={tool="cleanup_marker"}'''
+
+    def test_side_effecting_case_runs_setup_and_cleanup(self):
         marker=self.root / 'approved-marker.txt'
-        self.configure('side_effect',case_extra='allow_side_effects=true',server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='write_marker',case_arguments={})
+        self.configure('effect_success',case_extra=self.lifecycle_case(),server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='run_marker',case_arguments={})
         self.record()
-        self.assertEqual(marker.read_text(),'side effect completed')
+        self.assertFalse(marker.exists())
+
+    def test_cleanup_runs_after_setup_failure(self):
+        marker=self.root / 'setup-failure-marker.txt'
+        self.configure('effect_setup_failure',case_extra=self.lifecycle_case(),server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='run_marker',case_arguments={})
+        result=self.record(expected=1)
+        self.assertIn('fixture setup failed',result.stderr)
+        self.assertFalse(marker.exists())
+
+    def test_cleanup_runs_after_case_failure(self):
+        marker=self.root / 'case-failure-marker.txt'
+        self.configure('effect_main_failure',case_extra=self.lifecycle_case(),server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='run_marker',case_arguments={})
+        self.record(expected=1)
+        self.assertFalse(marker.exists())
+
+    def test_cleanup_failure_fails_capture(self):
+        marker=self.root / 'cleanup-failure-marker.txt'
+        self.configure('effect_cleanup_failure',case_extra=self.lifecycle_case(),server_env={'MOCK_MUTATION_FILE':str(marker)},case_tool='run_marker',case_arguments={})
+        result=self.record(expected=1)
+        self.assertIn('fixture cleanup failed',result.stderr)
+        self.assertTrue(marker.exists())
+        self.assertFalse(self.baseline.exists())
+
+    def test_side_effect_classification_and_cleanup_are_required(self):
+        for case_extra in (
+            'allow_side_effects=true',
+            'effect="mutating"\nallow_side_effects=true',
+            'effect="destructive"\nallow_side_effects=true\ncleanup={tool="cleanup_marker",arguments=[]}',
+        ):
+            self.configure(case_extra=case_extra)
+            self.run_cli('validate','--config',self.config,expected=1)
 
     def test_minimal_server_environment_drops_parent_secrets(self):
         self.configure(server_extra='env_clear=true', case_text='env-check', case_extra='''[cases.assertions]
